@@ -52,7 +52,22 @@ listen(admin, async (req, res) => {
 })
 listen(site, (req, res) => {
   if (req.method !== 'GET') throw problem('只读站点', 405)
-  const { documents } = db.current()
+  const { generation, documents } = db.current()
+  if (req.url === '/api/v1/published') {
+    const etag = '"published-' + generation + '"'
+    res.setHeader('ETag', etag)
+    if (req.headers['if-none-match'] === etag) {
+      res.writeHead(304, { 'Cache-Control': 'no-cache' })
+      return res.end()
+    }
+    return json(res, {
+      schemaVersion: 1, generation,
+      editions: editions.filter(e => documents[e.id]).map(({ id, lang, label }) => {
+        const { title, html, version, assets } = documents[id]
+        return { id, lang, label, title, html, version, images: [...new Set(Object.values(assets))] }
+      }),
+    })
+  }
   if (req.url === '/style.css') return send(res, 'text/css', ui('style.css'))
   if (/^\/assets\/[0-9a-f]{64}\.(png|jpe?g|webp|gif)$/.test(req.url)) {
     const id = req.url.slice(8)
