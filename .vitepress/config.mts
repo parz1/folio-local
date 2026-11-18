@@ -4,6 +4,11 @@ export default defineConfig({
   title: 'Folio',
   srcDir: 'content',
   cleanUrls: true,
+  vite: {
+    server: {
+      watch: { awaitWriteFinish: { stabilityThreshold: 150, pollInterval: 30 } },
+    },
+  },
   lastUpdated: false,
   locales: {
     root: { label: '简体中文', lang: 'zh-CN', themeConfig: { langMenuLabel: '切换语言' } },
@@ -16,3 +21,4 @@ export default defineConfig({
     docFooter: { prev: false, next: false },
   },
 })
+
