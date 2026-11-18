@@ -16,6 +16,9 @@ export default defineConfig({
     ja: { label: '日本語', lang: 'ja', link: '/ja/' },
   },
   themeConfig: {
+    nav: process.argv.includes('dev')
+      ? [{ text: '发布工作台', link: 'http://127.0.0.1:4174/' }]
+      : [],
     sidebar: false,
     outline: false,
     docFooter: { prev: false, next: false },

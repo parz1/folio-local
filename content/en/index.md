@@ -16,3 +16,5 @@ Draw a pencil line near the bottom of a paper strip. Place a dot of water-based 
 ## Mark where the water stopped
 
 When the water approaches the top, lift the strip out and mark the wet edge in pencil. It almost disappears as the paper dries. The drawing shows one strip at three moments. Try another pen and you may get a different set of colours.
+
+I kept the dried strip beside the pen, so I could compare it with the next sample.
