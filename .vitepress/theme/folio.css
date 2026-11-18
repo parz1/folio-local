@@ -1,0 +1,21 @@
+:root {
+  --vp-c-brand-1: #316152;
+  --vp-c-brand-2: #416e59;
+  --vp-c-bg: #fcfaf4;
+  --vp-font-family-base: system-ui, sans-serif;
+}
+
+.dark {
+  --vp-c-brand-1: #95c6ab;
+  --vp-c-bg: #1f2825;
+}
+
+.vp-doc h1 {
+  font-family: Georgia, "Yu Mincho", "Songti SC", serif;
+  line-height: 1.3;
+}
+
+.vp-doc img {
+  width: 100%;
+  border-radius: 4px;
+}
