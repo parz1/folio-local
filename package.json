@@ -12,7 +12,8 @@
     "build": "vitepress build",
     "preview": "vitepress preview --host 127.0.0.1",
     "publish:local": "node publishing/server.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "open": "node publishing/server.mjs"
   },
   "devDependencies": {
     "diff": "9.0.0",

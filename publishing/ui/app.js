@@ -28,12 +28,16 @@ function reset() {
 }
 async function refresh() {
   const request = ++epoch
-  const { editions } = await api('status')
+  const { editions, site } = await api('status')
+  byId('test-site').href=site
   if (request !== epoch || JSON.stringify(editions) === fingerprint) return
   fingerprint = JSON.stringify(editions)
   selected = selected.filter(id => editions.some(e => e.id === id && ['draft','modified'].includes(e.status)))
   reset()
-  const rows = editions.map(e => {
+  const rows = []
+  let previous
+  for (const e of editions) {
+    if(e.group !== previous){rows.push(element('h3',e.group));previous=e.group}
     labels.set(e.id,e.label)
     const label = element('label','','row'), box = document.createElement('input')
     box.type='checkbox'; box.value=e.id; box.checked=selected.includes(e.id)
@@ -46,8 +50,16 @@ async function refresh() {
     const name=element('span','')
     name.append(element('strong',e.label),element('small',e.error || e.title))
     label.append(box,name,element('span',states[e.status],'state '+e.status))
-    return label
-  })
+    const entry=element('div','')
+    entry.append(label)
+    if (!e.error) {
+      const preview=element('a','预览 · '+e.file)
+      preview.href='/preview/'+e.id+'/'
+      entry.append(preview)
+    }
+    rows.push(entry)
+  }
+  if (!rows.length) rows.push(element('p','此文件夹中还没有 Markdown 文稿。','quiet'))
   byId('rows').replaceChildren(...rows)
 }
 function render(changes) {

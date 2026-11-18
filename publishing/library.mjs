@@ -3,13 +3,8 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFil
 import { dirname, extname, join, resolve, sep } from 'node:path'
 import MarkdownIt from 'markdown-it'
 import { structuredPatch } from 'diff'
-import { parse } from 'yaml'
+import { discover, markdown } from './discover.mjs'
 
-export const editions = [
-  { id: 'zh', label: '简体中文', lang: 'zh-CN', file: 'index.md' },
-  { id: 'en', label: 'English', lang: 'en', file: 'en/index.md' },
-  { id: 'ja', label: '日本語', lang: 'ja', file: 'ja/index.md' },
-]
 export const escape = value => String(value).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
@@ -24,9 +19,11 @@ export function problem(message, status = 400) {
   return Object.assign(new Error(message), { status })
 }
 
-export function library(root) {
-  const content = realpathSync(join(root, 'content'))
-  const state = join(root, '.folio-local')
+export function library(root, folder) {
+  const content = realpathSync(folder || join(root, 'content'))
+  const sample = !folder || content === realpathSync(join(root, 'content'))
+  const state = sample ? join(root, '.folio-local') : join(root, '.folio-local', 'workspaces', hash(content))
+  const catalog = () => discover(content, sample)
   const pointer = join(state, 'published.json')
   const key = randomBytes(32)
   const current = () => existsSync(pointer)
@@ -36,17 +33,14 @@ export function library(root) {
   function draft(edition) {
     const file = realpathSync(join(content, edition.file))
     if (!file.startsWith(content + sep)) throw problem('文稿超出内容目录')
-    const source = readFileSync(file, 'utf8').replace(/\r\n/g, '\n')
-    const header = /^---\n([\s\S]*?)\n---(?:\n|$)/.exec(source)
-    const meta = header && parse(header[1])
-    if (typeof meta?.title !== 'string' || !meta.title.trim()) throw problem('文稿需要 title')
+    const { source, body, title } = markdown(readFileSync(file,'utf8'),edition.file)
     const assets = {}, blobs = new Map()
-    const html = md.render(source.slice(header[0].length), {
+    const html = md.render(body, {
       asset(ref) {
         const name = decodeURIComponent(ref)
-        if (/^[a-z]+:|^[\\/]|[?#]/i.test(name)) throw problem('图片须引用 content/assets 中的本地文件')
+        if (/^[a-z]+:|^[\\/]|[?#]/i.test(name)) throw problem('图片须引用 文件夹中的相对路径')
         const path = realpathSync(resolve(dirname(file), name))
-        if (!path.startsWith(join(content, 'assets') + sep)) throw problem('图片超出素材目录')
+        if (!path.startsWith(content + sep) || path.slice(content.length+1).split(sep).some(part=>part.startsWith('.') || part==='node_modules')) throw problem('图片超出素材目录')
         const ext = extname(path).toLowerCase()
         if (!['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext)) throw problem('不支持的图片格式')
         const bytes = readFileSync(path), id = hash(bytes) + ext
@@ -56,11 +50,12 @@ export function library(root) {
       },
     })
     const version = hash(JSON.stringify([source, assets]))
-    return { document: { title: meta.title, source, html, assets, version }, blobs }
+    return { document: { title, lang: edition.lang, label: edition.label, group: edition.group, source, html, assets, version }, blobs }
   }
   function list() {
     const live = current()
-    return editions.map(e => {
+    return catalog().map(e => {
+      if (e.error) return { ...e, status: 'invalid' }
       const published = live.documents[e.id]
       try {
         const { document } = draft(e)
@@ -72,6 +67,7 @@ export function library(root) {
     })
   }
   function prepare(ids) {
+    const editions = catalog().filter(e => !e.error)
     if (!Array.isArray(ids) || !ids.length || new Set(ids).size !== ids.length ||
         !ids.every(id => editions.some(e => e.id === id))) throw problem('请选择有效译本')
     const live = current(), documents = { ...live.documents }, changes = [], blobs = new Map()
@@ -109,5 +105,10 @@ export function library(root) {
     renameSync(temp, pointer)
     return { generation: next.generation }
   }
-  return { list, current, check, publish, state }
+  function preview(id) {
+    const edition = catalog().find(e => e.id===id && !e.error)
+    if (!edition) throw problem('找不到文稿',404)
+    return draft(edition)
+  }
+  return { list, current, check, publish, preview, state }
 }
